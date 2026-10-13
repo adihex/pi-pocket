@@ -64,6 +64,7 @@ import {
     sourceFolders,
     type Worktree,
 } from "./worktrees.ts";
+import { createHex, hexesOn, setupHex } from "./hexes.ts";
 
 const context = BACKGROUND_CONTEXT;
 
@@ -351,6 +352,14 @@ export class Commands {
             throw new HttpError(403, "You were invited to one session and cannot start new ones.");
         }
 
+        // With hexes on, a session's tools run only in a hex of its own: never in a folder on the server.
+        if (hexesOn() && request.worktree !== true) {
+            throw new HttpError(
+                400,
+                "Every session here is a hex: start it in a git repository with a worktree of its own.",
+            );
+        }
+
         const given = optionalText(request.title, "title");
         const title = (given === undefined ? undefined : oneLine(given)) || undefined;
         const folder = app.workspace.checkDirectory(
@@ -402,6 +411,13 @@ export class Commands {
     async continuePiSession(user: User, path: string): Promise<{ id: ConversationId }> {
         const app = this.#app;
         const session = await app.piSessions.read(user, path);
+
+        if (hexesOn()) {
+            throw new HttpError(
+                403,
+                "Pi sessions from the terminal cannot continue here: every session is a hex, in a worktree of its own.",
+            );
+        }
         let cwd: string;
 
         try {
@@ -465,6 +481,11 @@ export class Commands {
         const made = await createWorktree(cwd, join(this.#app.dataDir, "worktrees"), label);
 
         try {
+            if (hexesOn()) {
+                // The hex first, so the repository's own setup runs inside it, never as the server.
+                await setupHex(await createHex(made.worktree.path), made.worktree.path);
+            }
+
             return await create(made);
         } catch (error) {
             await discardWorktree(made.worktree).catch((cleanup: unknown) =>

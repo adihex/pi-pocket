@@ -10,6 +10,7 @@ import { copyFile, lstat, mkdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { describe, HttpError } from "./errors.ts";
 import { git, GitError } from "./git.ts";
+import { hexOf, hexWorktree, removeHex } from "./hexes.ts";
 
 export type Worktree = {
     /** The worktree's folder. */
@@ -169,6 +170,29 @@ export async function sourceFolders(worktree: Worktree): Promise<(cwd: string) =
  */
 export async function removeWorktree(worktree: Worktree, force: boolean): Promise<void> {
     if (!existsSync(worktree.path)) {
+        return;
+    }
+
+    if (hexWorktree(worktree.path) === worktree.path) {
+        // A hex's worktree: checked inside the hex, then removed with its container by the path the server made, never
+        // through git metadata the hex could have rewritten (`git worktree remove` would follow it, and run its config).
+        if (!force) {
+            if (hexOf(worktree.path) === undefined) {
+                throw new HttpError(409, "The hex is not running, so its changes cannot be checked: remove it with force.");
+            }
+
+            if ((await git(worktree.path, ["status", "--porcelain"])).trim() !== "") {
+                throw new HttpError(409, "The worktree has uncommitted changes.");
+            }
+        }
+
+        await removeHex(worktree.path);
+        const root = await repositoryOf(worktree.source);
+
+        if (root !== undefined) {
+            await git(root, ["worktree", "prune"]);
+        }
+
         return;
     }
 

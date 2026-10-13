@@ -36,7 +36,9 @@ import {
     UsageDoc,
     type UsageState,
 } from "@earendil-works/pi-durable";
+import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
+import { hexEnv, hexesOn, hexOf, startHexes } from "./hexes.ts";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 import { CodingTools } from "@earendil-works/pi-durable/tools";
 import { Alerts } from "./alerts.ts";
@@ -274,7 +276,7 @@ export class PocketApp {
     readonly browsers: Browsers;
     readonly #clients = new Set<Client>();
     readonly #rooms = new Map<ConversationId, Promise<Room>>();
-    readonly #envs = new Map<string, NodeExecutionEnv>();
+    readonly #envs = new Map<string, ExecutionEnv>();
     readonly #busy = new Set<ConversationId>();
     /** When each conversation's last run ended, since this server started: peek tiles show sessions done since a look. */
     readonly #endedAt = new Map<ConversationId, number>();
@@ -444,6 +446,11 @@ export class PocketApp {
 
         const storage = await openNodeSqliteStorage(join(this.dataDir, "pocket.sqlite"));
 
+        // Hexes (`hexes.ts`) before the harness: work it resumes must find its hex.
+        if (process.env.HEXES === "1") {
+            await startHexes(join(this.dataDir, "worktrees"), (line) => this.log(line));
+        }
+
         this.harness = await Harness.open(
             storage,
             {
@@ -451,7 +458,7 @@ export class PocketApp {
                 registry,
                 settings: this.#harnessSettings(),
                 now: this.now,
-                env: ({ cwd }) => this.#env(cwd ?? this.defaultCwd),
+                env: ({ conversationId, cwd }) => this.#env(conversationId, cwd ?? this.defaultCwd),
                 conversationCreated: async (tx, conversation) => {
                     // Every conversation gets the app's documents up front, so views can read them from the start.
                     await tx.doc(AuthorsDoc, conversation.id);
@@ -770,17 +777,28 @@ export class PocketApp {
         } as HarnessSettings;
     }
 
-    /** Where a conversation's commands run: its folder on this machine. */
-    envFor(id: ConversationId): NodeExecutionEnv {
-        return this.#env(this.cwdOf(id));
+    /** Where a conversation's commands run: its hex, with hexes on; otherwise its folder on this machine. */
+    envFor(id: ConversationId): ExecutionEnv {
+        return this.#env(id, this.cwdOf(id));
     }
 
-    #env(cwd: string): NodeExecutionEnv {
-        let env = this.#envs.get(cwd);
+    #env(id: ConversationId, cwd: string): ExecutionEnv {
+        const hex = hexOf(cwd);
+
+        // PiP reads and changes nothing (`PIP_WITHOUT`), so it alone keeps the server's folder. Any other session
+        // outside a hex (its folder moved, or its hex gone) gets no place to run rather than the server.
+        if (hex === undefined && hexesOn() && this.sessionMeta(id)?.pip === undefined) {
+            throw new Error(
+                `This session is not in a hex (${cwd}), so its tools have nowhere safe to run. Start a new hex.`,
+            );
+        }
+
+        const key = hex === undefined ? cwd : `${hex}\n${cwd}`;
+        let env = this.#envs.get(key);
 
         if (env === undefined) {
-            env = new NodeExecutionEnv({ cwd });
-            this.#envs.set(cwd, env);
+            env = hex === undefined ? new NodeExecutionEnv({ cwd }) : hexEnv(hex, cwd);
+            this.#envs.set(key, env);
         }
 
         return env;
