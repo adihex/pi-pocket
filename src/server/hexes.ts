@@ -9,6 +9,7 @@
 import { execFile } from "node:child_process";
 import { access, constants, mkdir, rm } from "node:fs/promises";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { Connection, RemoteExecutionEnv } from "@earendil-works/pi-env";
 import { HttpError } from "./errors.ts";
 
@@ -199,6 +200,26 @@ export async function createHex(worktree: string): Promise<string> {
     await disk("git-worktrees", join(common, "worktrees"), true);
     await disk("git-worktree", gitDir, false);
     await run("incus", ["start", name]);
+
+    // Wait for the hex to finish booting before anything runs in it: its /tmp is a tmpfs mounted during boot (files
+    // written before it would vanish under it), and setup may need the network. Right after `start`, systemd may not
+    // answer yet ("Failed to connect to system scope bus"), so ask again until it says. "degraded" still means
+    // booted, and exits non-zero, so the answer is read rather than the exit code.
+    let booted = "";
+
+    for (const until = Date.now() + 60_000; Date.now() < until; await sleep(250)) {
+        booted = await run("incus", ["exec", name, "--", "systemctl", "is-system-running", "--wait"], undefined, 60_000)
+            .then(({ stdout }) => stdout.trim(), (error: RunError) => (error.stdout ?? "").trim() || error.message);
+
+        if (booted === "running" || booted === "degraded") {
+            break;
+        }
+    }
+
+    if (booted !== "running" && booted !== "degraded") {
+        throw new Error(`hex ${name} did not finish booting: ${booted}`);
+    }
+
     known.add(name);
     log(`hex ${name} made for ${worktree}`);
 
