@@ -91,7 +91,7 @@ const route: FauxResponseStep = (request) => {
     }
 
     // A session's Pi: a "sleepy" task sleeps first, so it is still at work when PiP compacts.
-    if (!system.includes("You are PiP")) {
+    if (!system.includes("You are Jojo")) {
         if (role === "user" && text.includes("sleepy")) {
             return tool("bash", { command: "sleep 1.5" });
         }
@@ -210,7 +210,7 @@ test("outside text is left out, whichever fence it came in, closed or not", () =
         },
     ] as Message[]);
 
-    assert.match(source, /\[Message to PiP\]: Keep answers short\./);
+    assert.match(source, /\[Message to Jojo\]: Keep answers short\./);
     // PiP's notes from before: whole, however long, and not its person's words.
     const notes = `The conversation history before this point was compacted into the following summary:\n\n<summary>\n${"- a line of notes\n".repeat(400)}## Following and watching\n- #4\n</summary>`;
 
@@ -265,7 +265,7 @@ test("compacting by hand: PiP's summary is written without what came from outsid
 
     // The person's words, and what PiP did, are there; nothing sessions, posts, GitHub, or files said is.
     assert.match(asked, /I like short answers\. Always link the sessions you name\./);
-    assert.match(asked, /\[PiP called session_read\]: \{"session":\d+\}/);
+    assert.match(asked, /\[Jojo called session_read\]: \{"session":\d+\}/);
     assert.match(asked, /\[left out: what a session said\]/);
     assert.match(asked, /\[left out: what was posted to the webhook\]/);
     assert.match(asked, /\[left out: what happened on GitHub\]/);
@@ -384,7 +384,7 @@ test("a summary that cannot be written fails the compaction; nothing outside is 
                 (each) =>
                     each.event === "notice" &&
                     each.data.message ===
-                        "PiP's context was not compacted: PiP's summary failed: overloaded",
+                        "Jojo's context was not compacted: Jojo's summary failed: overloaded",
             ),
         "the notice",
     );
@@ -458,9 +458,9 @@ test("only the owner sets when PiP compacts, to one of its choices; PiP turned o
         );
         await assert.rejects(
             app.commands.submit(id, me, { text: "hello", requestId: crypto.randomUUID() }),
-            /PiP is turned off/,
+            /Jojo is turned off/,
         );
-        await assert.rejects(app.commands.compact(id, me, undefined), /PiP is turned off/);
+        await assert.rejects(app.commands.compact(id, me, undefined), /Jojo is turned off/);
     } finally {
         await app.setExtensionEnabled(me, "pip.ts", true);
     }

@@ -287,7 +287,7 @@ export class RepoWatches {
         }
 
         if (app.sessionMeta(request.target) === undefined || !app.canSee(person, request.target)) {
-            throw new HttpError(404, "Watches message sessions this person can reach, or PiP.");
+            throw new HttpError(404, "Watches message sessions this person can reach, or Jojo.");
         }
 
         const named = parseRepo(request.repo);
@@ -752,7 +752,7 @@ export class RepoWatches {
 
             // PiP is off: a run there would have none of PiP's rules. Held, waiting at the usual pace: nothing failed.
             if (app.sessionMeta(target)?.pip !== undefined && !app.pip.available(person)) {
-                return this.#again(id, runtime, this.timing.poll, context, "PiP is turned off");
+                return this.#again(id, runtime, this.timing.poll, context, "Jojo is turned off");
             }
 
             try {

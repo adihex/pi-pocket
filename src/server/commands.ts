@@ -688,7 +688,7 @@ export class Commands {
         // PiP turned off takes nothing, from its person either: it would run without its rules, and be compacted without
         // its own summary (`pip-compact.ts`). What else goes to it (reports, schedules, watches) waits meanwhile.
         if (app.pip.ownerOf(id) !== undefined && !app.pip.available(user)) {
-            throw new HttpError(409, "PiP is turned off in Extensions.");
+            throw new HttpError(409, "Jojo is turned off in Extensions.");
         }
 
         const conversation = await app.conversation(id);
@@ -1485,7 +1485,7 @@ export class Commands {
                 // A session the person can no longer open keeps its title to itself.
                 targetTitle:
                     meta?.pip !== undefined
-                        ? "PiP"
+                        ? "Jojo"
                         : app.canSee(user, target)
                           ? (meta?.title ?? "New session")
                           : "a session you cannot open",
@@ -1502,7 +1502,7 @@ export class Commands {
                 ...watch,
                 targetTitle:
                     meta?.pip !== undefined
-                        ? "PiP"
+                        ? "Jojo"
                         : app.canSee(user, target)
                           ? (meta?.title ?? "New session")
                           : "a session you cannot open",
@@ -1776,7 +1776,7 @@ export class Commands {
 
         // A fork would carry PiP's tools and none of PiP: they act as PiP's person, which a fork is not.
         if (app.sessionMeta(id)?.pip !== undefined) {
-            throw new HttpError(400, "PiP's conversation cannot be forked. Start fresh instead.");
+            throw new HttpError(400, "Jojo's conversation cannot be forked. Start fresh instead.");
         }
     }
 
@@ -1944,16 +1944,16 @@ export class Commands {
         const pip = app.pip.ownerOf(id) !== undefined;
 
         if (pip && !app.pip.available(user)) {
-            throw new HttpError(409, "PiP is turned off in Extensions.");
+            throw new HttpError(409, "Jojo is turned off in Extensions.");
         }
 
         // Compacting asks the model for a summary, which costs like any other request.
         app.spend.check(user, id);
         const conversation = await app.conversation(id);
         const taskId = await conversation.compact(instructions, context);
-        const done = pip ? "PiP's context compacted." : "Compacted.";
+        const done = pip ? "Jojo's context compacted." : "Compacted.";
 
-        app.notice("info", pip ? "Compacting PiP's context…" : "Compacting…", id);
+        app.notice("info", pip ? "Compacting Jojo's context…" : "Compacting…", id);
         await app.collab.activity(id, user, "started compacting the context", false);
         void app.harness.waitForTask(taskId, context).then(
             (receipt) => {
@@ -1965,7 +1965,7 @@ export class Commands {
                     const failed = pip ? app.pipCompaction.failure(Number(taskId)) : undefined;
 
                     if (failed !== undefined) {
-                        app.notice("error", `PiP's context was not compacted: ${failed}`, id);
+                        app.notice("error", `Jojo's context was not compacted: ${failed}`, id);
                     } else {
                         app.notice(
                             "info",

@@ -879,12 +879,12 @@ test("while PiP is off, a watch to PiP holds what it found, and says why", async
     ];
 
     try {
-        await until(async () => (await watches())[0]?.note === "PiP is turned off", "the note");
+        await until(async () => (await watches())[0]?.note === "Jojo is turned off", "the note");
         // Waiting, at the usual pace: no failed look is counted.
         const calls = github.calls.length;
 
         await until(() => github.calls.length > calls + 4, "more looks");
-        assert.equal((await watches())[0]?.note, "PiP is turned off");
+        assert.equal((await watches())[0]?.note, "Jojo is turned off");
         assert.equal((await watches())[0]?.errors, 0);
         assert.equal((await watches())[0]?.count, 0);
         assert.ok(!(await messages(id)).some((text) => text.includes("While PiP is off")));

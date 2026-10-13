@@ -43,7 +43,7 @@ const tool = (name: string, args: Parameters<typeof fauxToolCall>[1]) =>
 const route: FauxResponseStep = (request) => {
     // PiP's requests carry its prompt; the prompt and the tools come as the transcript's system messages.
     const isPip = JSON.stringify((request as { messages: unknown[] }).messages).includes(
-        "You are PiP",
+        "You are Jojo",
     );
     const { role, text: written } = lastText(request as never);
     // With more than one person on the server, a message starts with who sent it.
@@ -148,7 +148,7 @@ test("PiP is made once, for the owner, and stays out of the session list", async
     assert.deepEqual(app.pip.state(owner(app)), { id: Number(first), busy: false });
     await assert.rejects(
         app.commands.fork(first, owner(app), { entryId: 1 }),
-        /PiP's conversation cannot be forked/,
+        /Jojo's conversation cannot be forked/,
     );
 
     const guest = app.config.addUser("Guest", "guest").user;
@@ -205,13 +205,13 @@ test("PiP starts a session for its person, and hears back when Pi there answers"
     assert.match(lines.join("\n"), /done: Started session \/s\/\d+ and sent the message/);
     assert.match(
         lines.join("\n"),
-        /noted \[report\] “fix the flaky test” \(\/s\/\d+\) answered your message:\n<session-output>\necho: \[via PiP\] fix the flaky test\n<\/session-output>/,
+        /noted \[report\] “fix the flaky test” \(\/s\/\d+\) answered your message:\n<session-output>\necho: \[via Jojo\] fix the flaky test\n<\/session-output>/,
     );
 
     // The session's message is marked as sent through PiP, and is the owner's work but not their own words.
     const sessionLines = await said(started.id as unknown as ConversationId);
 
-    assert.equal(sessionLines[0], "> [via PiP] fix the flaky test");
+    assert.equal(sessionLines[0], "> [via Jojo] fix the flaky test");
     assert.equal(
         app.attribution.requesterOf(started.id as unknown as ConversationId),
         owner(app).id,
@@ -268,7 +268,7 @@ test("PiP denies a waiting call, as its person through PiP, and cannot allow one
         /call-1 · \[“New session”\]\(\/s\/\d+\) · bash: “rm -rf build” · “deletes files”/,
     );
     await say(app, id, "deny call-1");
-    assert.deepEqual(await answer, { allow: false, by: `${owner(app).name} via PiP` });
+    assert.deepEqual(await answer, { allow: false, by: `${owner(app).name} via Jojo` });
 
     const approvals = (await (await app.conversation(id)).agent(context)).tools.find(
         (each) => each.name === "approvals",
@@ -392,7 +392,7 @@ test("PiP's messages go once per call, whatever its call ids look like", async (
     await until(async () => !app.isBusy(session), "the session at rest");
     const sent = (await said(session)).filter((line) => line.startsWith("> "));
 
-    assert.deepEqual(sent, ["> [via PiP] first", "> [via PiP] second"]);
+    assert.deepEqual(sent, ["> [via Jojo] first", "> [via Jojo] second"]);
 });
 
 test("following an idle session answers at once; an aborted follow leaves PiP's list", async () => {
@@ -437,7 +437,7 @@ test("PiP's cost shows in its person's spend", async () => {
     await recordCost(app, id, 0.25);
     const row = app.spend.summary(owner(app)).sessions.find((each) => each.id === Number(id));
 
-    assert.equal(row?.title, "PiP");
+    assert.equal(row?.title, "Jojo");
     assert.ok((row?.spent ?? 0) >= 0.25);
 });
 

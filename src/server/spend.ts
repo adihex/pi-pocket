@@ -357,7 +357,7 @@ export class Spend {
 
             sessions.push({
                 id: Number(pip),
-                title: "PiP",
+                title: "Jojo",
                 spent: byRoot.get(pip) ?? 0,
                 ...(budget === undefined ? {} : { budget }),
             });

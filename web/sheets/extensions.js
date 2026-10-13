@@ -67,13 +67,13 @@ function PipCompactAt({ owner }) {
 
     return html`<div class="setting wrap">
         <div class="grow">
-            <div class="small">Compact PiP's context</div>
+            <div class="small">Compact Jojo's context</div>
             <div class="muted small">
-                Once PiP is idle above this, older messages become a short summary.
+                Once Jojo is idle above this, older messages become a short summary.
             </div>
         </div>
         <select
-            aria-label="Compact PiP's context"
+            aria-label="Compact Jojo's context"
             value=${String(at)}
             disabled=${!owner}
             onChange=${change}

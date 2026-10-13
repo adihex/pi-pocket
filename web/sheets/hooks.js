@@ -35,7 +35,7 @@ function HookRow({ hook, base, fresh, onRemove, onRotate }) {
         <div class="hook-head">
             <strong class="grow">${hook.name}</strong>
             <span class="muted small">
-                to ${hook.pip ? "PiP" : html`<a href=${`/s/${hook.target}`} onClick=${open}>${hook.targetTitle}</a>`}
+                to ${hook.pip ? "Jojo" : html`<a href=${`/s/${hook.target}`} onClick=${open}>${hook.targetTitle}</a>`}
             </span>
         </div>
         ${hook.instructions && html`<div class="hook-text">${hook.instructions}</div>`}
@@ -88,7 +88,7 @@ function WatchRow({ watch, onRemove, onAnyone }) {
         <div class="hook-head">
             <strong class="grow">${watch.repo}</strong>
             <span class="muted small">
-                to ${watch.pip ? "PiP" : html`<a href=${`/s/${watch.target}`} onClick=${open}>${watch.targetTitle}</a>`}
+                to ${watch.pip ? "Jojo" : html`<a href=${`/s/${watch.target}`} onClick=${open}>${watch.targetTitle}</a>`}
             </span>
         </div>
         <div class="muted small">${watch.events.join(", ")}${narrowed.length > 0 ? ` · ${narrowed.join(", ")}` : ""}</div>
@@ -122,7 +122,7 @@ export function HooksSheet() {
     const [fresh, setFresh] = useState(null);
     const steer = me?.role !== "viewer";
     const load = () => attempt(async () => setList(await api("hooks")));
-    const targets = [here && ["here", "This session"], pipAvailable() && ["pip", "PiP"]].filter(
+    const targets = [here && ["here", "This session"], pipAvailable() && ["pip", "Jojo"]].filter(
         Boolean,
     );
 
@@ -205,7 +205,7 @@ export function HooksSheet() {
             if (
                 on &&
                 !confirm(
-                    `Let anyone's issues and PRs on ${watch.repo} reach ${watch.pip ? "PiP" : "Pi"}? Strangers' words then come with your instructions.`,
+                    `Let anyone's issues and PRs on ${watch.repo} reach ${watch.pip ? "Jojo" : "Pi"}? Strangers' words then come with your instructions.`,
                 )
             ) {
                 return;
@@ -217,7 +217,7 @@ export function HooksSheet() {
 
     return html`<${Sheet} title="Webhooks and watches" onClose=${closeSheet}>
         <p class="muted small">
-            Other services (GitHub, a deploy, a monitor) post to a webhook's address, and each post becomes a message to Pi in a session, or to PiP: your instructions, then what came.
+            Other services (GitHub, a deploy, a monitor) post to a webhook's address, and each post becomes a message to Pi in a session, or to Jojo: your instructions, then what came.
         </p>
         ${
             steer &&
@@ -284,7 +284,7 @@ export function HooksSheet() {
                             )}
                         </div>
                         <div class="muted small">
-                            ${target === "pip" ? "PiP decides what to do: start a session, message one, or tell you." : `Pi in “${here?.title}” gets each post.`}
+                            ${target === "pip" ? "Jojo decides what to do: start a session, message one, or tell you." : `Pi in “${here?.title}” gets each post.`}
                         </div>
                     </div>`
                 }
@@ -327,7 +327,7 @@ export function HooksSheet() {
         ${
             list &&
             html`<p class="muted small">
-                Ask PiP to watch a repository, such as “watch acme/api: when CI fails on main, fix it”. It needs no address.
+                Ask Jojo to watch a repository, such as “watch acme/api: when CI fails on main, fix it”. It needs no address.
             </p>
             <p class="muted small">
                 ${list.base ? "" : `Services post to ${location.origin}, so they must be able to reach it: a tunnel's address works for GitHub. `}For GitHub: the repository's Settings → Webhooks → Add webhook; paste the address as the Payload URL and the secret as the Secret, choose application/json, and pick the events.

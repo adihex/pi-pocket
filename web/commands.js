@@ -393,9 +393,9 @@ const COMMANDS = [
         run: (arg) => openSheet({ type: "branch", query: arg }),
     },
     {
-        name: "pip",
+        name: "jojo",
         args: "[message]",
-        description: "Open PiP, your assistant over every session, or ask it something",
+        description: "Open Jojo, your assistant over every session, or ask it something",
         available: pipAvailable,
         run: (arg) => (arg === "" ? openPip() : askPip(arg)),
     },

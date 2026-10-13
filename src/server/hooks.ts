@@ -401,7 +401,7 @@ export class Hooks {
         app.requireSteer(user);
 
         if (app.sessionMeta(target) === undefined) {
-            throw new HttpError(400, "Webhooks message sessions, or PiP.");
+            throw new HttpError(400, "Webhooks message sessions, or Jojo.");
         }
 
         // One line, without brackets: it is the label of every message the hook sends (`[via webhook <name>]`).
@@ -590,7 +590,7 @@ export class Hooks {
 
         // PiP turned off keeps its hooks: they come back when it is on again.
         if (meta.pip !== undefined && !app.pip.available(person)) {
-            throw new HttpError(503, "PiP is turned off on this server.");
+            throw new HttpError(503, "Jojo is turned off on this server.");
         }
 
         const content = contentOf(post);

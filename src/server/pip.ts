@@ -54,7 +54,7 @@ const context = BACKGROUND_CONTEXT;
 /** PiP's extension: its tools, its prompt, and the follow task. Selected in PiP's conversation only. */
 export const PIP_EXTENSION = "pocket-pip";
 /** What PiP is called, in the app and in what it sends. */
-export const PIP_NAME = "PiP";
+export const PIP_NAME = "Jojo";
 /**
  * The extensions PiP runs with, in order. Not the system prompt (PiP's extension has its own) nor anything that works
  * on files and commands beyond reading: PiP hands hands-on work to sessions.
@@ -258,7 +258,7 @@ export class Pip {
                     await app.harness.abortTask(compaction.taskId, context);
                 }
             } catch (error) {
-                app.log(`PiP ${String(id)} was not stopped: ${describe(error)}`);
+                app.log(`Jojo ${String(id)} was not stopped: ${describe(error)}`);
             }
         }
     }
@@ -297,11 +297,11 @@ export class Pip {
     /** This person's PiP, made the first time they open it. Its agent is set to what PiP runs with each time. */
     async ensure(user: User): Promise<ConversationId> {
         if (user.role !== "owner") {
-            throw new HttpError(403, "PiP is the owner's for now.");
+            throw new HttpError(403, "Jojo is the owner's for now.");
         }
 
         if (!this.available(user)) {
-            throw new HttpError(409, "PiP is turned off in Extensions.");
+            throw new HttpError(409, "Jojo is turned off in Extensions.");
         }
 
         const existing = this.idOf(user.id);
@@ -476,7 +476,7 @@ export class Pip {
         const user = userId === undefined ? undefined : this.#app.config.userById(userId);
 
         if (user === undefined) {
-            throw new Error("Only PiP has these tools.");
+            throw new Error("Only Jojo has these tools.");
         }
 
         return user;
@@ -1689,7 +1689,7 @@ export class Pip {
                     );
                 }
             } catch (error) {
-                runtime.report(new Error(`PiP's report was not delivered: ${describe(error)}`));
+                runtime.report(new Error(`Jojo's report was not delivered: ${describe(error)}`));
             }
         }
 

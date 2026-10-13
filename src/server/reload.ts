@@ -55,7 +55,7 @@ const TITLES: Record<string, string> = {
     "guard.ts": "Lancet Guard",
     "codemode.ts": "Codemode",
     "memory.ts": "Memory",
-    "pip.ts": "PiP",
+    "pip.ts": "Jojo",
     "triggers.ts": "Triggers",
 };
 

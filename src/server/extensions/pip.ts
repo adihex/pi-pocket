@@ -4,14 +4,19 @@
  * requests and acts on what happens there, and can deny (never allow) calls waiting for approval. Only PiP's own
  * conversation selects this extension; while it is off, PiP is hidden and its follows wait.
  */
+import { constants } from "node:fs";
+import { access, readdir, realpath } from "node:fs/promises";
+import { join, relative, resolve, sep } from "node:path";
 import { Type } from "@earendil-works/pi-ai";
 import {
+    AgentDoc,
     CompactionTask,
     type ConversationId,
     defineExtension,
     defineTool,
     hook,
     section,
+    ToolTask,
 } from "@earendil-works/pi-durable";
 import type { PrWatch, RepoEvent, Schedule } from "../docs.ts";
 import { quoted } from "../fence.ts";
@@ -27,7 +32,7 @@ const reply = (text: string) => ({ content: [{ type: "text" as const, text }] })
 const EVENTS: readonly RepoEvent[] = ["issues", "pulls", "ci", "releases", "mentions"];
 
 function preamble(name: string): string {
-    return `You are ${PIP_NAME} ("Pi in Pocket"), ${name}'s assistant in Pi Pocket, a self-hosted app where Pi, a coding agent, works in many sessions at once. You look after those sessions for ${name}: you find out what is going on, start new work, pass messages along, stop or archive sessions, follow runs until they end, set up reminders and recurring jobs, and watch their GitHub repositories and pull requests to act on what happens there. You do not write code or run commands yourself: when something needs hands-on work, start a session (or message one) and let Pi do it there.
+    return `You are ${PIP_NAME}, ${name}'s assistant in Hexes, a self-hosted app where Pi, a coding agent, works in many hexes at once: each hex is a session in its own git worktree of a project, inside a container of its own. You look after those sessions for ${name}: you find out what is going on, start new work, pass messages along, stop or archive sessions, follow runs until they end, set up reminders and recurring jobs, and watch their GitHub repositories and pull requests to act on what happens there. You do not write code or run commands yourself: when something needs hands-on work, start a session (or message one) and let Pi do it there.
 
 ${name} reaches you from a small panel over whatever they are doing, often on a phone, and relies on you: be dependable before fast. So:
 - Be brief: a sentence or a short list. Lead with the answer. No headings, no preamble.
@@ -116,6 +121,88 @@ function scheduleLine(item: Schedule): string {
             : `${describeRepeat(item.every)}, next ${describeMoment(item.next, item.zone)}`;
 
     return `${item.id}: ${when} · ${quoted(item.text, 200)}`;
+}
+
+/** Where hex projects live (`HEX_PROJECTS`, or the deployment default). */
+function hexRoot(): string {
+    const root = process.env.HEX_PROJECTS;
+
+    return root === undefined || root.trim() === "" ? "/home/hexes/hex-projects" : root;
+}
+
+/** Whether `target` is `root` or under it. */
+function insidePath(target: string, root: string): boolean {
+    return target === root || target.startsWith(root + sep);
+}
+
+/** Resolve `target`, following symlinks; when it does not exist, the resolved path. */
+async function realTarget(target: string): Promise<string> {
+    try {
+        return await realpath(target);
+    } catch {
+        return resolve(target);
+    }
+}
+
+/** Whether `path` (absolute or relative to `cwd`) ends up inside `root`. */
+async function pathInside(cwd: string, path: string, root: string): Promise<boolean> {
+    const target = await realTarget(resolve(cwd, path));
+    const realRoot = await realTarget(root);
+
+    return insidePath(target, realRoot);
+}
+
+/** Project lines for the hexes prompt section: git projects by name, marked when setup is executable. */
+async function hexProjectLines(root: string): Promise<string[]> {
+    let names: string[];
+
+    try {
+        names = await readdir(root);
+    } catch {
+        return [];
+    }
+
+    names.sort();
+    const lines: string[] = [];
+
+    for (const name of names) {
+        try {
+            await access(join(root, name, ".git"));
+        } catch {
+            continue;
+        }
+
+        let setup = false;
+
+        try {
+            await access(join(root, name, ".agents", "setup"), constants.X_OK);
+            setup = true;
+        } catch {
+            setup = false;
+        }
+
+        lines.push(setup ? `- ${name} (has .agents/setup)` : `- ${name}`);
+    }
+
+    return lines;
+}
+
+/** The hexes prompt section: how to start a hex, and which projects exist. */
+async function pipHexesSection(): Promise<string | undefined> {
+    if (process.env.HEXES !== "1") {
+        return undefined;
+    }
+
+    const root = hexRoot();
+    const lines = await hexProjectLines(root);
+    const projects = lines.length === 0 ? "(no projects)" : lines.join("\n");
+
+    return [
+        "In this app every session is a **hex**: a session in its own git worktree of a project, in its own container. Call them hexes.",
+        `To start one: \`session_start\` with \`folder: "${root}/<project>"\` and \`worktree: true\`, then a clear task. The server refuses sessions without a worktree. The project's \`.agents/setup\` runs inside the new hex first; if it fails, no hex is made: report the error to the person, do not retry blindly.`,
+        `Projects in ${root}:`,
+        projects,
+    ].join("\n");
 }
 
 export default function createPip(host: PocketHost) {
@@ -675,6 +762,34 @@ export default function createPip(host: PocketHost) {
                         ? { decline: true }
                         : host.pipCompaction.summarize(compaction, api, context),
             }),
+            hook(ToolTask, {
+                beforeTool: async (call, api, context) => {
+                    const args = call.arguments as Record<string, unknown>;
+                    const path = args["path"];
+
+                    if (typeof path !== "string" || path.trim() === "") {
+                        return undefined;
+                    }
+
+                    const agent = await api.snapshot(AgentDoc, api.conversationId, context);
+                    const cwd = agent?.cwd ?? process.cwd();
+                    const dataDir = host.dataDir;
+                    const agentDir = host.agentDir;
+                    const blocked =
+                        (await pathInside(cwd, path, agentDir)) ||
+                        ((await pathInside(cwd, path, dataDir)) &&
+                            !(await pathInside(cwd, path, join(dataDir, "worktrees"))) &&
+                            !(await pathInside(cwd, path, join(dataDir, "uploads"))));
+
+                    if (!blocked) {
+                        return undefined;
+                    }
+
+                    return {
+                        block: `Blocked: Jojo only reads, and never touches the server's data folder (${relative(cwd, dataDir) || dataDir}) or the agent folder (${relative(cwd, agentDir) || agentDir}). Start a session to do hands-on work there instead.`,
+                    };
+                },
+            }),
         ],
         sections: [
             section(
@@ -688,6 +803,7 @@ export default function createPip(host: PocketHost) {
             ),
             section("pip_rules", () => RULES),
             section("pip_github", () => (github ? GITHUB : undefined)),
+            section("pip_hexes", pipHexesSection),
             section("pip_environment", (input) => {
                 // The date only, so the prompt stays cache-friendly through the day.
                 const today = new Date().toLocaleDateString("en-CA", { timeZone: zone });

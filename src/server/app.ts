@@ -1131,7 +1131,7 @@ export class PocketApp {
                 tab.pip = undefined;
             }
 
-            this.#log(`PiP's view did not open: ${describe(error)}`);
+            this.#log(`Jojo's view did not open: ${describe(error)}`);
 
             return;
         }

@@ -43,7 +43,7 @@ const route: FauxResponseStep = (request) => {
     const { role, text: written } = lastText(request as never);
     const text = written.replace(/^\[from: [^\]]+\] /, "");
 
-    if (!all.includes("You are PiP")) {
+    if (!all.includes("You are Jojo")) {
         return fauxAssistantMessage([fauxText(`echo: ${text}`)]);
     }
 

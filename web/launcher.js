@@ -231,7 +231,7 @@ function actionItems() {
                 run: () => setArchived([conversation.id], !conversation.archived),
             },
         pipAvailable() && {
-            label: "Ask PiP",
+            label: "Ask Jojo",
             detail: "your assistant, over any screen",
             icon: "pip",
             keys: "Alt A",

@@ -1,5 +1,5 @@
 // PiP, "Pi in Pocket": the owner's assistant, in a small window over whatever is open. It stays out of the way until
-// called: Alt+A, the rail's PiP button, the places, the launcher, or `/pip`; and a small mark in the corner shows only
+// called: Alt+A, the rail's PiP button, the places, the launcher, or `/jojo`; and a small mark in the corner shows only
 // while PiP works, or has something new. The panel watches PiP's conversation through a view of its own (`pipview`
 // events), so the session behind it stays as it was.
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
@@ -184,10 +184,10 @@ export function closePip() {
 
 export const togglePip = () => (store.state.pipOpen ? closePip() : openPip());
 
-/** Send PiP a message from anywhere (`/pip …`), and open the panel to show what it says. */
+/** Send PiP a message from anywhere (`/jojo …`), and open the panel to show what it says. */
 export async function askPip(text) {
     if (!pipAvailable()) {
-        notify("error", "PiP is not on here.");
+        notify("error", "Jojo is not on here.");
 
         return;
     }
@@ -196,7 +196,7 @@ export async function askPip(text) {
     const pip = store.state.pip ?? (await opening);
 
     if (!pip) {
-        notify("error", "PiP is not ready yet: your message waits in its box.");
+        notify("error", "Jojo is not ready yet: your message waits in its box.");
     }
 
     // Not sent: the words wait in PiP's box rather than be lost (`send` said why), after what was there already.
@@ -212,7 +212,7 @@ async function send(id, text, busy) {
     const target = id ?? store.state.pip?.id ?? (await opening)?.id;
 
     if (target === undefined) {
-        notify("error", "PiP is not ready yet. Try again in a moment.");
+        notify("error", "Jojo is not ready yet. Try again in a moment.");
 
         return false;
     }
@@ -250,10 +250,10 @@ function PipContext({ stats, window }) {
     const percent = Math.min(100, Math.round((used / window) * 100));
     const at = store.state.server?.pipCompactAt;
     const about = stats.contextEstimated ? "~" : "";
-    const tokens = `${about}${formatTokens(used)} of ${formatTokens(window)} tokens in PiP's context.`;
+    const tokens = `${about}${formatTokens(used)} of ${formatTokens(window)} tokens in Jojo's context.`;
     const when =
         at > 0
-            ? `PiP compacts itself above ${formatTokens(at)} once idle.`
+            ? `Jojo compacts itself above ${formatTokens(at)} once idle.`
             : "Compact it when it grows.";
     const title = `${tokens} ${when}`;
 
@@ -406,7 +406,7 @@ function Welcome({ id, name }) {
     const first = (name ?? "").split(/\s+/)[0];
 
     return html`<div class="pip-welcome">
-        <p class="pip-hello">Hi${first ? ` ${first}` : ""}. I’m PiP.</p>
+        <p class="pip-hello">Hi${first ? ` ${first}` : ""}. I’m Jojo.</p>
         <p class="pip-intro">${INTRO}</p>
         <div class="pip-chips">
             ${SUGGESTIONS.map(
@@ -504,8 +504,8 @@ function Composer({ id, busy }) {
             ref=${ref}
             rows="1"
             value=${text}
-            placeholder=${dictation.listening ? "Listening…" : busy ? "Tell PiP more…" : "Ask PiP…"}
-            aria-label="Message to PiP"
+            placeholder=${dictation.listening ? "Listening…" : busy ? "Tell Jojo more…" : "Ask Jojo…"}
+            aria-label="Message to Jojo"
             enterkeyhint="send"
             onInput=${(event) => change(event.currentTarget.value)}
             onKeyDown=${(event) => {
@@ -520,7 +520,7 @@ function Composer({ id, busy }) {
                 ? html`<button
                       type="button"
                       class="icon-button pip-send"
-                      aria-label="Stop PiP"
+                      aria-label="Stop Jojo"
                       title="Stop"
                       onClick=${() => attempt(() => api(`c/${id}/abort`, {}))}
                   >
@@ -529,7 +529,7 @@ function Composer({ id, busy }) {
                 : html`<button
                       type="submit"
                       class="icon-button pip-send"
-                      aria-label="Send to PiP"
+                      aria-label="Send to Jojo"
                       disabled=${text.trim() === ""}
                   >
                       <${Icon} name="send" size=${18} />
@@ -607,14 +607,14 @@ function PipPanel({ leaving, scrim }) {
         ref=${ref}
         role="dialog"
         aria-modal=${NARROW.matches ? "true" : undefined}
-        aria-label="PiP, your assistant"
+        aria-label="Jojo, your assistant"
     >
         <header class="pip-head">
             <div class="grip"></div>
             <span class=${`pip-mark ${busy ? "working" : ""}`} aria-hidden="true">
                 <${Icon} name="pip" size=${18} />
             </span>
-            <h2>PiP</h2>
+            <h2>Jojo</h2>
             <span class="pip-status" aria-live="polite">${status}</span>
             ${
                 ready &&
@@ -623,7 +623,7 @@ function PipPanel({ leaving, scrim }) {
             <button
                 class="icon-button"
                 aria-label="Compact"
-                title="Compact: PiP keeps a summary of older messages, and reads less each time"
+                title="Compact: Jojo keeps a summary of older messages, and reads less each time"
                 disabled=${!ready || busy || compacting || rows.length === 0}
                 onClick=${() => compactPip(id)}
             >
@@ -632,10 +632,10 @@ function PipPanel({ leaving, scrim }) {
             <button
                 class="icon-button"
                 aria-label="Start fresh"
-                title="Start fresh: PiP forgets this conversation"
+                title="Start fresh: Jojo forgets this conversation"
                 disabled=${!ready || busy || rows.length === 0}
                 onClick=${() =>
-                    confirm("Start fresh? PiP forgets this conversation; you can still read it.") &&
+                    confirm("Start fresh? Jojo forgets this conversation; you can still read it.") &&
                     attempt(() => api(`c/${id}/reset`, {}))}
             >
                 <${Icon} name="reload" size=${18} />
@@ -652,7 +652,7 @@ function PipPanel({ leaving, scrim }) {
             >
                 <${Icon} name="external" size=${18} />
             </button>
-            <button class="icon-button" aria-label="Close PiP" title="Close (Esc)" onClick=${closePip}>
+            <button class="icon-button" aria-label="Close Jojo" title="Close (Esc)" onClick=${closePip}>
                 <${Icon} name="close" size=${18} />
             </button>
         </header>
@@ -668,7 +668,7 @@ function PipPanel({ leaving, scrim }) {
         >
             ${
                 !ready
-                    ? html`<div class="pip-loading"><${Spinner} label="Waking PiP" /></div>`
+                    ? html`<div class="pip-loading"><${Spinner} label="Waking Jojo" /></div>`
                     : rows.length === 0 && !busy
                       ? html`<${Welcome} id=${id} name=${me?.name} />`
                       : items.map(
@@ -696,7 +696,7 @@ function PipPanel({ leaving, scrim }) {
             waiting.length > 0 &&
             html`<div class="pip-approval" role="status">
                 <${Icon} name="shield" size=${14} />
-                <span class="grow">PiP waits for your approval: ${waiting[0].tool}</span>
+                <span class="grow">Jojo waits for your approval: ${waiting[0].tool}</span>
                 <button
                     type="button"
                     class="button small"
@@ -728,8 +728,8 @@ function PipBubble() {
 
     return html`<button
         class=${`pip-bubble ${kept} ${leaving ? "leaving" : ""}`}
-        aria-label=${kept === "busy" ? "PiP is working: open PiP" : "PiP has something new: open PiP"}
-        title="PiP (Alt A)"
+        aria-label=${kept === "busy" ? "Jojo is working: open Jojo" : "Jojo has something new: open Jojo"}
+        title="Jojo (Alt A)"
         onClick=${() => openPip()}
     >
         <${Icon} name="pip" size=${22} />
@@ -776,8 +776,8 @@ export function PipRailButton() {
 
     return html`<button
         class=${`rail-button rail-pip ${pip?.busy ? "lit" : ""} ${pipOpen ? "open" : ""}`}
-        title="PiP, your assistant (Alt A)"
-        aria-label=${["PiP", pip?.busy && "working", unread && "something new"].filter(Boolean).join(", ")}
+        title="Jojo, your assistant (Alt A)"
+        aria-label=${["Jojo", pip?.busy && "working", unread && "something new"].filter(Boolean).join(", ")}
         aria-pressed=${pipOpen}
         onClick=${togglePip}
     >

@@ -92,7 +92,7 @@ function Places() {
         pipAvailable() && {
             id: "pip",
             icon: "pip",
-            label: "PiP",
+            label: "Jojo",
             dot: pipUnread(),
             dotLabel: "something new",
             run: () => {
