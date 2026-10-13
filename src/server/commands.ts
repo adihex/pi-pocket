@@ -64,7 +64,7 @@ import {
     sourceFolders,
     type Worktree,
 } from "./worktrees.ts";
-import { createHex, hexesOn, setupHex } from "./hexes.ts";
+import { createHex, hexesOn, hexOf, hexWorktree, setupHex, wakeHex } from "./hexes.ts";
 
 const context = BACKGROUND_CONTEXT;
 
@@ -473,6 +473,7 @@ export class Commands {
         isolated: boolean,
         label: string,
         create: (place: Place) => Promise<T>,
+        sourceHex?: string,
     ): Promise<T> {
         if (!isolated) {
             return create({ cwd, skipped: [] });
@@ -483,7 +484,7 @@ export class Commands {
         try {
             if (hexesOn()) {
                 // The hex first, so the repository's own setup runs inside it, never as the server.
-                await setupHex(await createHex(made.worktree.path), made.worktree.path);
+                await setupHex(await createHex(made.worktree.path, sourceHex), made.worktree.path);
             }
 
             return await create(made);
@@ -684,7 +685,9 @@ export class Commands {
 
         app.requireSee(user, id);
         await app.requireDriver(id, user);
-
+        const meta = app.sessionMeta(id);
+        const worktree = meta?.worktree?.path ?? (meta?.cwd && hexWorktree(meta.cwd));
+        if (worktree) await wakeHex(worktree);
         // PiP turned off takes nothing, from its person either: it would run without its rules, and be compacted without
         // its own summary (`pip-compact.ts`). What else goes to it (reports, schedules, watches) waits meanwhile.
         if (app.pip.ownerOf(id) !== undefined && !app.pip.available(user)) {
@@ -1609,10 +1612,24 @@ export class Commands {
     async fork(
         id: ConversationId,
         user: User,
-        request: { entryId?: unknown; worktree?: unknown },
+        request: { entryId?: unknown; worktree?: unknown; environment?: unknown },
     ): Promise<{ id: ConversationId }> {
         this.#requireForkable(id, user);
-        const entryId = entryIdOf(request.entryId);
+        let entryId: number;
+
+        if (request.entryId !== undefined) {
+            entryId = entryIdOf(request.entryId);
+        } else {
+            const history = await this.#app.transcripts.history(id, Number.MAX_SAFE_INTEGER);
+            const latest = [...history].reverse().find((e) => {
+                if (e.kind !== "assistant") return false;
+                return !("stopReason" in e && e.stopReason === "toolUse");
+            });
+            if (latest === undefined) {
+                throw new HttpError(400, "No finished assistant reply to fork from.");
+            }
+            entryId = latest.id;
+        }
         const entry = await this.#app.transcripts.visibleEntry(id, entryId);
 
         if (entry === undefined) {
@@ -1633,7 +1650,8 @@ export class Commands {
             id: await this.#branch(id, user, {
                 at: entryId,
                 label: "fork",
-                worktree: request.worktree === true,
+                worktree: request.worktree === true || request.environment === true,
+                environment: request.environment === true,
             }),
         };
     }
@@ -1792,6 +1810,7 @@ export class Commands {
             label: string;
             agent?: AgentChange;
             worktree: boolean;
+            environment?: boolean;
             resend?: Resend;
         },
     ): Promise<ConversationId> {
@@ -1800,9 +1819,15 @@ export class Commands {
         const source = await app.agentState(id);
         const sourceTitle = meta.title ?? "New session";
         const title = `${sourceTitle} · ${branch.label}`.slice(0, MAX_TITLE);
+        const sourceWorktree = meta.worktree?.path ?? (meta.cwd && hexWorktree(meta.cwd));
+        const sourceHex = branch.environment && sourceWorktree ? hexOf(sourceWorktree) : undefined;
 
-        return this.#inPlace(source?.cwd ?? meta.cwd, branch.worktree, title, (place) =>
-            this.#fork(id, user, { ...branch, title, sourceTitle, place }),
+        return this.#inPlace(
+            source?.cwd ?? meta.cwd,
+            branch.worktree,
+            title,
+            (place) => this.#fork(id, user, { ...branch, title, sourceTitle, place }),
+            sourceHex,
         );
     }
 

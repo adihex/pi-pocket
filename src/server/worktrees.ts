@@ -102,8 +102,13 @@ export async function createWorktree(
     const name = `${slug}-${randomUUID().slice(0, 6)}`;
     const worktree: Worktree = { path: join(folder, name), branch: `pocket/${name}`, source: cwd };
 
+    const mainRepo = await git(cwd, ["rev-parse", "--git-common-dir"]).then(
+        (dir) => dirname(resolve(cwd, dir.trim())),
+        () => root,
+    );
+
     mkdirSync(folder, { recursive: true });
-    await git(root, ["worktree", "add", "-b", worktree.branch, worktree.path, "HEAD"]);
+    await git(mainRepo, ["worktree", "add", "-b", worktree.branch, worktree.path, "HEAD"]);
 
     try {
         // Uncommitted changes to tracked files, as a commit object that changes nothing here; empty when there are none.

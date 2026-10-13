@@ -6,6 +6,7 @@ import { pipeline } from "node:stream/promises";
 import type { ConversationId } from "@earendil-works/pi-durable";
 import type { Attachment, SubmitRequest } from "../commands.ts";
 import { HttpError } from "../errors.ts";
+import { hexName, hexStatus, hexWorktree, suspendHex, wakeHex } from "../hexes.ts";
 import { serveImage, TYPES } from "./assets.ts";
 import { type ApiRequest, json, readJson, send } from "./io.ts";
 
@@ -291,6 +292,38 @@ export async function conversationRoutes(
 
     if (third === "fork" && method === "POST") {
         return json(response, 200, await app.commands.fork(id, user, await readJson(request)));
+    }
+    if (third === "environment" && method === "GET") {
+        const meta = app.sessionMeta(id);
+        const worktree = meta?.worktree?.path ?? (meta?.cwd ? hexWorktree(meta.cwd) : undefined);
+        const name = worktree ? hexName(worktree) : undefined;
+        const status = name ? await hexStatus(name) : "none";
+        return json(response, 200, {
+            container: name ?? null,
+            status,
+            busy: app.isBusy(id),
+        });
+    }
+
+    if (third === "environment" && method === "POST") {
+        const body = await readJson<{ action?: unknown }>(request);
+        const meta = app.sessionMeta(id);
+        const worktree = meta?.worktree?.path ?? (meta?.cwd ? hexWorktree(meta.cwd) : undefined);
+        if (!worktree) {
+            throw new HttpError(400, "This session is not running in a hex worktree.");
+        }
+        if (body.action === "suspend") {
+            if (app.isBusy(id)) {
+                throw new HttpError(409, "Cannot suspend an active session: wait for it to sleep or abort it first.");
+            }
+            await suspendHex(worktree);
+            return json(response, 200, { ok: true, status: "suspended" });
+        }
+        if (body.action === "wake") {
+            await wakeHex(worktree);
+            return json(response, 200, { ok: true, status: "running" });
+        }
+        throw new HttpError(400, "action must be suspend or wake");
     }
 
     if (third === "resend" && method === "POST") {

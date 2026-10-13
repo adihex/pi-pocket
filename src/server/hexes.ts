@@ -157,7 +157,42 @@ export function hexEnv(name: string, cwd: string): RemoteExecutionEnv {
  * Make the hex for a new worktree: a copy of the base with the worktree and the git it writes mounted at their own
  * paths, started. The git paths come from the server's git in the worktree it just made, before the hex exists.
  */
-export async function createHex(worktree: string): Promise<string> {
+export async function hexStatus(name: string): Promise<"running" | "suspended" | "stopped" | "absent"> {
+    try {
+        const { stdout } = await run("incus", ["info", name]);
+        const match = stdout.match(/^Status:\s+(\w+)/m);
+        if (!match || !match[1]) return "absent";
+        const status = match[1].toUpperCase();
+        if (status === "RUNNING") return "running";
+        if (status === "FROZEN") return "suspended";
+        if (status === "STOPPED") return "stopped";
+        return "stopped";
+    } catch {
+        return "absent";
+    }
+}
+
+export async function suspendHex(worktree: string): Promise<void> {
+    const name = hexName(worktree);
+    if (!known.has(name)) throw new HttpError(404, `No hex container for ${worktree}`);
+    await run("incus", ["pause", name]);
+    log(`hex ${name} suspended`);
+}
+
+export async function wakeHex(worktree: string): Promise<void> {
+    const name = hexName(worktree);
+    if (!known.has(name)) return;
+    const status = await hexStatus(name);
+    if (status === "suspended") {
+        await run("incus", ["start", name]);
+        log(`hex ${name} resumed`);
+    } else if (status === "stopped") {
+        await run("incus", ["start", name]);
+        log(`hex ${name} started`);
+    }
+}
+
+export async function createHex(worktree: string, sourceName?: string): Promise<string> {
     const name = hexName(worktree);
     const gitDir = (await run("git", ["rev-parse", "--absolute-git-dir"], worktree)).stdout.trim();
     const common = resolve(
@@ -170,8 +205,15 @@ export async function createHex(worktree: string): Promise<string> {
         await mkdir(join(common, folder), { recursive: true });
     }
 
-    await run("incus", ["copy", BASE, name]);
+    const fromSource = sourceName !== undefined && known.has(sourceName);
+    const base = fromSource ? sourceName : BASE;
+    await run("incus", ["copy", base, name]);
 
+    if (fromSource) {
+        for (const device of ["work", "git-worktree", "git", "git-config", "git-hooks", "git-info", "git-modules", "git-worktrees"]) {
+            await run("incus", ["config", "device", "remove", name, device]).catch(() => {});
+        }
+    }
     const disk = (device: string, source: string, readonly: boolean) =>
         run("incus", [
             "config",
