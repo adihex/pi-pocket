@@ -1,6 +1,6 @@
 {
-    "name": "Pi Pocket",
-    "short_name": "Pi Pocket",
+    "name": "Hexes",
+    "short_name": "Hexes",
     "description": "Durable, multiplayer Pi agents in your browser",
     "start_url": "/",
     "scope": "/",
